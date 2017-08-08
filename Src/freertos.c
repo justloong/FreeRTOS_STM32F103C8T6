@@ -55,6 +55,16 @@
 #include "led/bsp_led.h"
 #include "usart/bsp_debug_usart.h"
 
+
+
+
+#define TASK_BIT_0	 (1 << 0)
+#define TASK_BIT_1	 (1 << 1)
+#define TASK_BIT_2	 (1 << 2)
+#define TASK_BIT_3	 (1 << 3)
+#define TASK_BIT_ALL (TASK_BIT_0 | TASK_BIT_1 | TASK_BIT_2 )  //| TASK_BIT_3)
+
+
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -66,16 +76,29 @@ extern uint8_t uart2RcvOneData;
 extern UART_HandleTypeDef huart2;
 extern cmd_analyze_struct cmd_analyze;  
 extern const cmd_list_struct cmd_list[CMD_NUM];
+extern IWDG_HandleTypeDef hiwdg;
 
- TaskHandle_t xCmdAnalyzeHandle = NULL;
- TaskHandle_t redLEDTaskHandle = NULL;
- TaskHandle_t greenLEDTaskHandle = NULL;
- TaskHandle_t blueLEDTaskHandle = NULL;
+uint8_t fgPrintLog = 0;// 0:off  1:on
+
+
+/*--------------------------------------
+ * 任务句柄 & 事件标志组 
+ *--------------------------------------
+ */
+TaskHandle_t xCmdAnalyzeHandle = NULL;
+TaskHandle_t redLEDTaskHandle = NULL;
+TaskHandle_t greenLEDTaskHandle = NULL;
+TaskHandle_t blueLEDTaskHandle = NULL; 
+TaskHandle_t iwdgTaskHandle = NULL;
+ 
+EventGroupHandle_t xCreatedEventGroup = NULL;
 
 void vTaskCmdAnalyze(void *pvParameters);
 void redLEDTaskFunc(void *pvParameters);
 void greenLEDTaskFunc(void *pvParameters);
 void blueLEDTaskFunc(void *pvParameters);
+void iwdgHandleFunc(void *pvParameters);
+void AppObjCreate (void);
 
 /* USER CODE END Variables */
 
@@ -109,6 +132,12 @@ return 0;
 
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+    
+  /* 打印开机信息，判断系统是否重启 */
+  printf("=====================================================\r\n");
+  printf("= 系统启动\r\n");  
+  printf("= 开始创建任务\r\n");
+  printf("=====================================================\r\n");
        
   /* USER CODE END Init */
 
@@ -135,11 +164,13 @@ void MX_FREERTOS_Init(void) {
   xTaskCreate(vTaskCmdAnalyze,  "CmdAnalyzeTask",   512, NULL, 1, &xCmdAnalyzeHandle);
   xTaskCreate(redLEDTaskFunc,   "redLEDTask",       256, NULL, 2, &redLEDTaskHandle);
   xTaskCreate(greenLEDTaskFunc, "greenLEDTask",     256, NULL, 3, &greenLEDTaskHandle);
-  xTaskCreate(blueLEDTaskFunc,  "blueLEDTask",      256, NULL, 4, &blueLEDTaskHandle);
+  xTaskCreate(blueLEDTaskFunc,  "blueLEDTask",      256, NULL, 4, &blueLEDTaskHandle);  
+  xTaskCreate(iwdgHandleFunc,   "iwdgTask",         128, NULL, 5, &iwdgTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
+  AppObjCreate(); //创建任务通信机制
   /* USER CODE END RTOS_QUEUES */
 }
 
@@ -214,31 +245,119 @@ void vTaskCmdAnalyze( void *pvParameters )
 
 void redLEDTaskFunc(void *pvParameters)
 {
+
     while(1)
     {
         LED_RED_TOGGLE;
         vTaskDelay(500);
+        
+        /*发送事件标志*/
+        xEventGroupSetBits(xCreatedEventGroup, TASK_BIT_0);
     }
 }
 void greenLEDTaskFunc(void *pvParameters)
 {
+
     while(1)
     {
         LED_GREEN_TOGGLE;
         vTaskDelay(750);
+        
+        /*发送事件标志*/
+        xEventGroupSetBits(xCreatedEventGroup, TASK_BIT_1);
     }
 }
+
+/*
+*********************************************************************************************************
+*  函 数 名: blueLEDTaskFunc
+*  功能说明: blueLED任务回调函数 
+*  形  参: 无
+*  返 回 值: 无
+*********************************************************************************************************
+*/
 void blueLEDTaskFunc(void *pvParameters)
 {
+
     while(1)
     {
         LED_BLUE_TOGGLE;
+        
+        /*发送事件标志*/
+        xEventGroupSetBits(xCreatedEventGroup, TASK_BIT_2);
+        
         vTaskDelay(1000);
-        //MY_DEBUGF(1,("debug 1 \r\n"));
-        //MY_DEBUGF(0,("debug 0 \r\n"));
-       // printf("hello TASK is running\r\n");
     }
 }
+
+/*
+*********************************************************************************************************
+*  函 数 名: iwdgHandleFunc
+*  功能说明: 独立看门狗任务回调函数 
+*  形  参: 无
+*  返 回 值: 无
+*********************************************************************************************************
+*/
+void iwdgHandleFunc(void *pvParameters)
+{
+    EventBits_t uxBits;
+	const TickType_t xTicksToWait = 100 / portTICK_PERIOD_MS; /* 最大延迟100ms */
+	
+	/*
+     * iwdg 的工作时钟是固定的40KHz
+     * 经过 128分频后，最大超时时间是13秒
+     * 这里把超时计数器设置为3125，则超时时间被定义为10s
+     */
+    /* 启动独立看门狗 */
+    HAL_IWDG_Start(&hiwdg);
+	
+	/* 打印开机信息，判断系统是否重启 */
+	printf("=====================================================\r\n");
+	printf("= iwdg看门狗启动\r\n");
+	printf("=====================================================\r\n");
+	
+    while(1)
+    {
+		/* 等待所有任务发来事件标志 */
+		uxBits = xEventGroupWaitBits(xCreatedEventGroup, /* 事件标志组句柄 */
+							         TASK_BIT_ALL,       /* 等待TASK_BIT_ALL被设置 */
+							         pdTRUE,             /* 退出前TASK_BIT_ALL被清除，TASK_BIT_ALL都被设置才表示退出*/
+							         pdTRUE,             /* 设置为pdTRUE表示等待TASK_BIT_ALL都被设置 */
+							         xTicksToWait); 	 /* 等待延迟时间 */
+		
+		if((uxBits & TASK_BIT_ALL) == TASK_BIT_ALL)
+		{
+			HAL_IWDG_Refresh(&hiwdg);
+           // MY_DEBUGF(1,("任务都正常运行\r\n"));
+		}
+	    else
+		{
+			/* 每次xTicksToWait进来一次 */
+			/* 通过变量uxBits简单的可以在此检测那个任务长期没有发来运行标志 */
+           // MY_DEBUGF(1,("uxBits: %d\r\n", uxBits));
+		}
+    }
+}
+
+
+/*
+*********************************************************************************************************
+*  函 数 名: AppObjCreate
+*  功能说明: 创建任务通信机制 
+*  形  参: 无
+*  返 回 值: 无
+*********************************************************************************************************
+*/
+static void AppObjCreate (void)
+{
+    /* 创建事件标志组 */
+    xCreatedEventGroup = xEventGroupCreate();
+    if(xCreatedEventGroup == NULL)
+    {
+    /* 没有创建成功，用户可以在这里加入创建失败的处理机制 */
+    }
+}
+
 
      
 /* USER CODE END Application */
