@@ -110,7 +110,14 @@
 /*!< Uncomment the following line if you need to relocate your vector Table in
      Internal SRAM. */ 
 /* #define VECT_TAB_SRAM */
-#define VECT_TAB_OFFSET  0x0 /*!< Vector Table base offset field. 
+/****************************************************************
+ * 中断向量的偏移地址
+ * 如果项目没有Boot程序，则这个地址设置为 0x0
+ * 如果项目有Boot程序，则这个地址要根据实际修改，这里改为 0x3000。
+ * 同时，在MDK的软件配置中(Project -> Options -> Target -> IROM1的对应地址要与此地址一样)
+ * 比如便宜地址为0x3000，则IROM1的地址应该设置为0x8003000
+ ****************************************************************/
+#define VECT_TAB_OFFSET  0x3000 /*!< Vector Table base offset field. 
                                   This value must be a multiple of 0x200. */
 
 

@@ -62,6 +62,15 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+#define ApplicationAddress    						0x8003000
+#define PAGE_SIZE                         (0x400)    /* 1 Kbyte */
+#define FLASH_SIZE                        (0x20000)  /* 128 KBytes */
+#define FlagAddress                       (uint32_t)(ApplicationAddress - PAGE_SIZE)
+#define FlagSize                          PAGE_SIZE
+
+//volatile uint8_t FlagData[20] ;//__attribute__((at(FlagAddress))) = "APP-V0.1-2017-08-04";
+volatile uint8_t FlagData[20] __attribute__((at(FlagAddress))) = "APP-V0.1-2017-08-08";
+
 
 /* USER CODE END PV */
 
@@ -125,7 +134,7 @@ int main(void)
   while (1)
   {
     /* 
-    如果系统正常启动是不会运行到这里的，运行到这里极有可能是用于定时器任务或者空闲任务的
+    如果系统正常启动是不会运行到这里的，运行到这里极有可能是由于定时器任务或者空闲任务的
     heap 空间不足造成创建失败，此要加大 FreeRTOSConfig.h 文件中定义的 heap 大小：
     #define configTOTAL_HEAP_SIZE                    ((size_t)10240)
     */
