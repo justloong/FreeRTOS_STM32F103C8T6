@@ -49,6 +49,7 @@
 #include "main.h"
 #include "stm32f1xx_hal.h"
 #include "cmsis_os.h"
+#include "i2c.h"
 #include "iwdg.h"
 #include "tim.h"
 #include "usart.h"
@@ -116,6 +117,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_IWDG_Init();
+  MX_I2C1_Init();
 
   /* USER CODE BEGIN 2 */
 
