@@ -54,6 +54,9 @@
 /* USER CODE BEGIN Includes */     
 #include "led/bsp_led.h"
 #include "usart/bsp_debug_usart.h"
+#include "ssd1306/oled_ssd1306.h"
+//#include "ssd1306/oled_const.h"
+
 
 
 
@@ -156,16 +159,16 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 256);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  xTaskCreate(vTaskCmdAnalyze,  "CmdAnalyzeTask",   512, NULL, 1, &xCmdAnalyzeHandle);
+  xTaskCreate(vTaskCmdAnalyze,  "CmdAnalyzeTask",   512, NULL, 0, &xCmdAnalyzeHandle);
   xTaskCreate(redLEDTaskFunc,   "redLEDTask",       256, NULL, 2, &redLEDTaskHandle);
-  xTaskCreate(greenLEDTaskFunc, "greenLEDTask",     256, NULL, 3, &greenLEDTaskHandle);
-  xTaskCreate(blueLEDTaskFunc,  "blueLEDTask",      256, NULL, 4, &blueLEDTaskHandle);  
-  xTaskCreate(iwdgHandleFunc,   "iwdgTask",         128, NULL, 5, &iwdgTaskHandle);
+  xTaskCreate(greenLEDTaskFunc, "greenLEDTask",     128, NULL, 3, &greenLEDTaskHandle);
+  xTaskCreate(blueLEDTaskFunc,  "blueLEDTask",      128, NULL, 4, &blueLEDTaskHandle);  
+  xTaskCreate(iwdgHandleFunc,   "iwdgTask",         128, NULL, 0, &iwdgTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -179,9 +182,21 @@ void StartDefaultTask(void const * argument)
 {
 
   /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
+  ssd1306Init(SSD1306_CHARGEPUMP);
+  ssd1306ClearScreen( LAYER0 | LAYER1 );
+  ssd1306Refresh();
+  ssd1306DrawString(3,  0, "Hello World", 2, WHITE, LAYER0);
+  //ssd1306DrawString(3, 16, "TASK1:", 1, WHITE, LAYER0);
+  //ssd1306DrawString(3, 24, "TASK2:", 1, WHITE, LAYER0);
+  //ssd1306DrawString(3, 32, "TASK3:", 1, WHITE, LAYER0);
+  //ssd1306DrawString(3, 40, "TASK4:", 1, WHITE, LAYER0);
+  /* Infinite loop */    
   for(;;)
-  {
+  {    
+    //ssd1306ClearScreen( LAYER0 | LAYER1 );
+    //SSD1306LibTest();
+    //ssd1306Refresh();
+    //screenScrollShowMessage("hello",WHITE);
     osDelay(1);
   }
   /* USER CODE END StartDefaultTask */
@@ -245,11 +260,19 @@ void vTaskCmdAnalyze( void *pvParameters )
 
 void redLEDTaskFunc(void *pvParameters)
 {
-
+    uint16_t count = 0;
+    uint8_t str[30];
+    
     while(1)
-    {
+    {        
         LED_RED_TOGGLE;
         vTaskDelay(500);
+
+        ssd1306FillRect(   3,  16, 128, 8, BLACK, LAYER0 | LAYER1 );
+        count++;
+        sprintf(str,"TASK1:  %05d", count) ;
+        ssd1306DrawString(3, 16, str, 1, WHITE, LAYER0);
+        ssd1306Refresh();
         
         /*发送事件标志*/
         xEventGroupSetBits(xCreatedEventGroup, TASK_BIT_0);
@@ -313,11 +336,12 @@ void iwdgHandleFunc(void *pvParameters)
 	
 	/* 打印开机信息，判断系统是否重启 */
 	printf("=====================================================\r\n");
-	printf("= iwdg看门狗启动\r\n");
+	printf("= iwdg看门狗bu启动\r\n");
 	printf("=====================================================\r\n");
 	
     while(1)
     {
+        #if 1
 		/* 等待所有任务发来事件标志 */
 		uxBits = xEventGroupWaitBits(xCreatedEventGroup, /* 事件标志组句柄 */
 							         TASK_BIT_ALL,       /* 等待TASK_BIT_ALL被设置 */
@@ -336,6 +360,8 @@ void iwdgHandleFunc(void *pvParameters)
 			/* 通过变量uxBits简单的可以在此检测那个任务长期没有发来运行标志 */
            // MY_DEBUGF(1,("uxBits: %d\r\n", uxBits));
 		}
+        #endif
+        osDelay(1);
     }
 }
 

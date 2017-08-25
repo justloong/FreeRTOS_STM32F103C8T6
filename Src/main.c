@@ -140,7 +140,7 @@ int main(void)
     heap 空间不足造成创建失败，此要加大 FreeRTOSConfig.h 文件中定义的 heap 大小：
     #define configTOTAL_HEAP_SIZE                    ((size_t)10240)
     */
-  
+  osDelay(1);
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
