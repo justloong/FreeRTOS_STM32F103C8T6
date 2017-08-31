@@ -118,13 +118,13 @@ void  ssd1306Init(uint8_t vccstate)
 {
 
     #ifdef SSD1306_SPI_INTERFACE
-    HAL_Delay(100);
+    SSD1306MSDELAY(100);
     RST_LOW;
-    HAL_Delay(100);
+    SSD1306MSDELAY(100);
     RST_HIGH; 
     #endif
 
-    HAL_Delay  (100);
+    SSD1306MSDELAY  (100);
     // Initialisation sequence
     SSD1306_CMD(SSD1306_DISPLAYOFF);                    // 0xAE
     SSD1306_CMD(SSD1306_SETDISPLAYCLOCKDIV);            // 0xD5
@@ -140,7 +140,7 @@ void  ssd1306Init(uint8_t vccstate)
     else 
     { SSD1306_CMD(0x14); }
     SSD1306_CMD(SSD1306_MEMORYMODE);                    // 0x20
-    SSD1306_CMD(0x00);                                  // 0x0 act like ks0108
+    SSD1306_CMD(0x02);//(0x00);                                  // 0x0 act like ks0108
     SSD1306_CMD(SSD1306_SEGREMAP | 0x1);
     SSD1306_CMD(SSD1306_COMSCANDEC);
     SSD1306_CMD(SSD1306_SETCOMPINS);                    // 0xDA
@@ -159,7 +159,7 @@ void  ssd1306Init(uint8_t vccstate)
     SSD1306_CMD(0x40);
     SSD1306_CMD(SSD1306_DISPLAYALLON_RESUME);           // 0xA4
     SSD1306_CMD(SSD1306_NORMALDISPLAY);                 // 0xA6
-    HAL_Delay  (100);
+    SSD1306MSDELAY  (100);
     ssd1306TurnOn();
 }
 
@@ -178,17 +178,24 @@ void ssd1306Refresh(void)
     uint16_t j;
     #endif
 
-    SSD1306_CMD(SSD1306_SETLOWCOLUMN  | 0x0);  // low col = 0
-    SSD1306_CMD(SSD1306_SETHIGHCOLUMN | 0x0);  // hi col = 0
-    SSD1306_CMD(SSD1306_SETSTARTLINE  | 0x0);  // line #0
+    uint8_t freshTimes = 0;
 
-    //HAL_GPIO_WritePin( GPIOB, OLED_DC_Pin, GPIO_PIN_SET); 
+    while(freshTimes<8)
+    {   
+
+    SSD1306_CMD(SSD1306_SETLOWCOLUMN  | 0x00);  // low col = 0
+    SSD1306_CMD(SSD1306_SETHIGHCOLUMN | 0x00);  // hi col = 0
+    //SSD1306_CMD(SSD1306_SETSTARTLINE  | (freshTimes*8));  // line #0
+    
+    SSD1306_CMD(0XB0  | freshTimes);  // line #0
 
 #ifdef MULTILAYER
     ssd1306MixFrameBuffer();
 
     #ifdef SSD1306_I2C_INTERFACE
-        HAL_I2C_Mem_Write(&hi2c1, SSD1306_ADDRESS, SSD1306_WRITE_DATA, I2C_MEMADD_SIZE_8BIT, buffer_ol, sizeof(buffer_ol), 10000);
+        HAL_I2C_Mem_Write(&hi2c1, SSD1306_ADDRESS, SSD1306_WRITE_DATA, I2C_MEMADD_SIZE_8BIT, 
+        (buffer_ol+(freshTimes*128)), 128, 10000);
+        //HAL_I2C_Mem_Write_IT(&hi2c1, SSD1306_ADDRESS, SSD1306_WRITE_DATA, I2C_MEMADD_SIZE_8BIT, buffer_ol, 1024);
     #else
         j = SSD1306_LCDWIDTH * SSD1306_LCDHEIGHT / 8;
         for(i=0;i<j;i++)
@@ -208,6 +215,8 @@ void ssd1306Refresh(void)
     #endif
 #endif
 
+        freshTimes++;
+        }
 }
 
 /**

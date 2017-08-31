@@ -121,8 +121,7 @@ void SSD1306LibTest(void)
   
   
   
-
-	#if 1
+	
 	/* ---Test routine--- */
     /* take display buffer */
     ssd1306ClearScreen(LAYER0|LAYER1);
@@ -252,7 +251,6 @@ void SSD1306LibTest(void)
 		ssd1306Refresh();
     /* */
     SSD1306MSDELAY(5000);
-    #endif
 
     /* ---Test routine--- */
     /* take display buffer */
@@ -270,8 +268,7 @@ void SSD1306LibTest(void)
 		SSD1306MSDELAY(3);
 	}
 	/* END OF INTRO */
-
-    #if 1
+    
 	for(i = 0; i < 360; i++)
     {
         ssd1306FillRect(   0,  0, 128, 64, BLACK, LAYER0 | LAYER1 );
@@ -308,7 +305,6 @@ void SSD1306LibTest(void)
         ssd1306Refresh();
         SSD1306MSDELAY(10);
     }
-    #endif
 }	
 /*
  *  Copy polygon to polygon
@@ -459,7 +455,32 @@ int pointInPolygon(MobileUnitTypeDef * poly, int polyCorners, double x, double y
 //      oddNodes^=(polyX[i]+(y-polyY[i])/(polyY[j]-polyY[i])*(polyX[j]-polyX[i])<x); }
 //    j=i; }
 //  return oddNodes; }
-  
+
+
+
+
+/******************************************************************************
+* Function Name : welcomPage
+* Description   : 
+* Argument      : none
+* Return Value  : none
+******************************************************************************/
+void welcomPage(void)
+{
+    int i,j;
+    ssd1306ClearScreen( LAYER1 );
+    for(j = 0; j < 1; j++)
+    {
+      ssd1306DrawPixel( (rand() % 127), (rand() % 5), WHITE, LAYER0) ;
+    }
+    ssd1306DrawString( 10,  16, "  Hello  ",  2, WHITE, LAYER1);
+    ssd1306DrawString( 10, 32, "   World ",  2, WHITE, LAYER1);
+    ssd1306ShiftFrameBuffer( 1, 1);
+
+    ssd1306Refresh();
+    SSD1306MSDELAY(40);
+}
+
   
   
   
